@@ -1,0 +1,16 @@
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment variables (SECURITY RISK IF PUSHED)
+.env
+server/.env
+client/.env
+
+# Build files
+client/build/
+client/dist/
+
+# OS generated files
+.DS_Store
