@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Point this to your backend proxy (ensure your Node server is running on port 5000)
-const PROXY_URL = 'http://localhost:5000/api/movies/tmdb';
+const PROXY_URL = '/api/movies/tmdb';
 
 export const fetchMovies = {
   
