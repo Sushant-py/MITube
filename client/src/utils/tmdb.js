@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // Point this to your backend proxy (ensure your Node server is running on port 5000)
-const PROXY_URL = '/api/movies/tmdb';
+// It will look for the live URL, but fall back to localhost if it can't find one
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const PROXY_URL = `${API_BASE}/api/movies`;
 
 export const fetchMovies = {
   
