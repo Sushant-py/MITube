@@ -9,7 +9,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
 
-  // Restore user from Local Storage on refresh
+  // Use the environment variable to point to Render in production, or localhost in development
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser && token) {
@@ -25,17 +27,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (username, password) => {
-    const res = await axios.post('http://localhost:5000/api/auth/login', { username, password });
+    const res = await axios.post(`${API_BASE}/api/auth/login`, { username, password });
     saveAuthData(res.data);
   };
 
   const register = async (username, email, password) => {
-    const res = await axios.post('http://localhost:5000/api/auth/register', { username, email, password });
+    const res = await axios.post(`${API_BASE}/api/auth/register`, { username, email, password });
     saveAuthData(res.data);
   };
 
   const googleLogin = async (credential) => {
-    const res = await axios.post('http://localhost:5000/api/auth/google', { credential });
+    const res = await axios.post(`${API_BASE}/api/auth/google`, { credential });
     saveAuthData(res.data);
   };
 
