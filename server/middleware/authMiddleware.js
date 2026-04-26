@@ -1,25 +1,22 @@
 const jwt = require('jsonwebtoken');
 
-const protect = (req, res, next) => {
-    // 1. Get the token from the Authorization header (Format: "Bearer <token>")
-    const authHeader = req.header('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'Not authorized, no token provided' });
+const authMiddleware = (req, res, next) => {
+    // Get token from header
+    const token = req.header('Authorization');
+
+    // Check if no token
+    if (!token) {
+        return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
-    const token = authHeader.split(' ')[1];
-
+    // Verify token
     try {
-        // 2. Verify the token using your secret key
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        // 3. Attach the decoded user payload (id, username) to the request object
-        req.user = decoded;
-        next(); // Move on to the actual controller
-    } catch (error) {
-        res.status(401).json({ message: 'Not authorized, token failed' });
+        const decoded = jwt.verify(token.split(" ")[1] || token, process.env.JWT_SECRET || 'fallback_secret');
+        req.user = decoded.user;
+        next();
+    } catch (err) {
+        res.status(401).json({ message: 'Token is not valid' });
     }
 };
 
-module.exports = { protect };
+module.exports = authMiddleware;

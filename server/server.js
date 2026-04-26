@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 // Import Routes
-const authRoutes = require('./routes/authRoutes');
-const movieRoutes = require('./routes/movieRoutes');
+const authRoutes = require('./routes/authroutes');
+const movieRoutes = require('./routes/movieroutes');
 
 const app = express();
 
