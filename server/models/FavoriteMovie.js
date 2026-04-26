@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const savedMovieSchema = new mongoose.Schema({
+const favoriteMovieSchema = new mongoose.Schema({
     user: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User', 
@@ -13,7 +13,7 @@ const savedMovieSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-savedMovieSchema.index({ user: 1, movie: 1 }, { unique: true });
+favoriteMovieSchema.index({ user: 1, movie: 1 }, { unique: true });
 
 // Safely export
-module.exports = mongoose.models.SavedMovie || mongoose.model('SavedMovie', savedMovieSchema);
+module.exports = mongoose.models.FavoriteMovie || mongoose.model('FavoriteMovie', favoriteMovieSchema);

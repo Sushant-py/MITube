@@ -16,7 +16,7 @@ app.use(express.json());
 // --- THE DIAGNOSTIC CHECK ---
 console.log("\n=========================================");
 console.log("🔍 DIAGNOSTIC CHECK:");
-console.log("MONGO_URI:", process.env.MONGO_URI);
+console.log("Done");
 console.log("=========================================\n");
 
 // Connect to MongoDB

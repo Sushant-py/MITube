@@ -1,85 +1,80 @@
-import { Play, Bookmark, Star, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Play, Bookmark, Star } from 'lucide-react';
 
-export function FeaturedHero({ movie, onWatch }) {
-  // Map TMDB formatted data or fallback to defaults
-  const title = movie?.title || "Cosmic Odyssey";
-  const rating = movie?.rating || "9.8";
-  const year = movie?.year || "2026";
-  const description = movie?.description || "An epic journey through space and time.";
-  const thumbnail = movie?.thumbnail || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200&h=800&fit=crop";
+export function FeaturedHero({ movie, onWatch, isSavedInitial = false, isFavoritedInitial = false, onSyncList }) {
+  const [isSaved, setIsSaved] = useState(isSavedInitial);
+  const [isFavorited, setIsFavorited] = useState(isFavoritedInitial);
 
-  const handleMainWatch = () => {
-    // Call the modal function if available
-    if (onWatch && movie?.id) {
-      onWatch(movie.id, title);
-    } else if (movie?.videoUrl) {
-      window.open(movie.videoUrl, '_blank');
-    } else {
-      alert("Trailer not available");
-    }
+  useEffect(() => { setIsSaved(isSavedInitial); }, [isSavedInitial]);
+  useEffect(() => { setIsFavorited(isFavoritedInitial); }, [isFavoritedInitial]);
+
+  if (!movie) return null;
+
+  const handleSave = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return alert("Please log in to save movies.");
+
+      if (isSaved) {
+        const res = await fetch(`/api/movies/save/${movie.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) { setIsSaved(false); if (onSyncList) onSyncList('save', 'remove', movie.id); }
+      } else {
+        const res = await fetch('/api/movies/save', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ movieId: movie.id, title: movie.title, thumbnail: movie.thumbnail, genre: movie.genre, year: movie.year, rating: movie.rating })
+        });
+        if (res.ok) { setIsSaved(true); if (onSyncList) onSyncList('save', 'add', movie.id); }
+      }
+    } catch (error) { console.error(error); }
   };
 
-  const handleMainSave = () => {
-    console.log("Featured movie saved to watchlist");
+  const handleFavorite = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return alert("Please log in to favorite movies.");
+
+      if (isFavorited) {
+        const res = await fetch(`/api/movies/favorite/${movie.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) { setIsFavorited(false); if (onSyncList) onSyncList('favorite', 'remove', movie.id); }
+      } else {
+        const res = await fetch('/api/movies/favorite', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ movieId: movie.id, title: movie.title, thumbnail: movie.thumbnail, genre: movie.genre, year: movie.year, rating: movie.rating })
+        });
+        if (res.ok) { setIsFavorited(true); if (onSyncList) onSyncList('favorite', 'add', movie.id); }
+      }
+    } catch (error) { console.error(error); }
   };
 
   return (
-    <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-8 p-8 min-h-[600px]">
-      <div className="relative overflow-hidden border-2 border-emerald-500/30 bg-black rounded-lg">
-        <img
-          src={thumbnail}
-          alt="Featured"
-          className="h-full w-full object-cover opacity-60"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-        <div className="absolute top-0 right-0 px-6 py-3 bg-emerald-500 text-black uppercase tracking-widest rounded-bl-lg font-bold">
-          Featured
-        </div>
+    <div className="relative w-full h-[70vh] min-h-[600px] overflow-hidden group">
+      <div className="absolute inset-0">
+        <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover transform scale-105 group-hover:scale-100 transition-transform duration-1000" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
       </div>
 
-      <div className="flex flex-col justify-center space-y-6 lg:pr-12">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="h-px w-12 bg-emerald-500"></div>
-            <span className="text-emerald-400 text-sm uppercase tracking-widest font-semibold">Now Playing</span>
-          </div>
-          <h1 className="text-5xl lg:text-6xl text-white tracking-tight leading-tight border-l-4 border-emerald-500 pl-6 font-bold">
-            {title}
-          </h1>
+      <div className="relative h-full flex flex-col justify-center px-8 lg:px-16 max-w-4xl z-10">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-bold uppercase tracking-widest">Trending Now</span>
+          <span className="flex items-center gap-1 text-emerald-400 font-medium"><Star className="w-4 h-4 fill-emerald-400" /> {movie.rating}</span>
+          <span className="text-zinc-400">{movie.year}</span>
         </div>
 
-        <div className="flex items-center gap-6 text-zinc-400 border-l-4 border-emerald-500/20 pl-6">
-          <div className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-emerald-400 fill-emerald-400" />
-            <span className="text-emerald-400 font-medium">{rating}</span>
-          </div>
-          <span className="text-emerald-500">|</span>
-          <span>{year}</span>
-          <span className="text-emerald-500">|</span>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            <span>2h 15m</span>
-          </div>
-        </div>
+        <h1 className="text-5xl lg:text-7xl font-black text-white mb-6 uppercase tracking-tight leading-tight">{movie.title}</h1>
+        <p className="text-lg text-zinc-400 mb-10 max-w-2xl line-clamp-3 leading-relaxed">{movie.description}</p>
 
-        <p className="text-zinc-400 leading-relaxed border-l-4 border-emerald-500/20 pl-6 max-w-xl line-clamp-4">
-          {description}
-        </p>
-
-        <div className="flex items-center gap-4 pt-4">
-          <button 
-            onClick={handleMainWatch}
-            className="flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-black px-8 py-4 transition-all border-2 border-emerald-500 hover:border-emerald-400 rounded-lg group"
-          >
-            <Play className="h-6 w-6 fill-black group-hover:scale-110 transition-transform" />
-            <span className="font-bold uppercase tracking-wide">Watch Trailer</span>
+        <div className="flex flex-wrap items-center gap-4">
+          <button onClick={() => onWatch(movie.id, movie.title)} className="flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold uppercase tracking-widest rounded-full transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105">
+            <Play className="w-6 h-6 fill-black" /> Watch Trailer
           </button>
-          <button 
-            onClick={handleMainSave}
-            className="flex items-center gap-3 border-2 border-emerald-500/50 hover:border-emerald-500 bg-black/40 hover:bg-emerald-500/10 text-emerald-400 px-8 py-4 transition-all rounded-lg"
-          >
-            <Bookmark className="h-6 w-6" />
-            <span className="font-bold uppercase tracking-wide">Save</span>
+          <button onClick={handleSave} className={`flex items-center gap-2 px-6 py-4 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105 backdrop-blur-sm border ${isSaved ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-zinc-900/80 text-white border-zinc-700 hover:border-emerald-500 hover:bg-emerald-500 hover:text-black'}`}>
+            <Bookmark className="w-5 h-5" fill={isSaved ? "currentColor" : "none"} /> {isSaved ? 'Saved' : 'Save'}
+          </button>
+          <button onClick={handleFavorite} className={`flex items-center gap-2 px-6 py-4 font-bold uppercase tracking-widest rounded-full transition-all hover:scale-105 backdrop-blur-sm border ${isFavorited ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'bg-zinc-900/80 text-white border-zinc-700 hover:border-emerald-500 hover:bg-emerald-500 hover:text-black'}`}>
+            <Star className="w-5 h-5" fill={isFavorited ? "currentColor" : "none"} /> {isFavorited ? 'Favorited' : 'Favorite'}
           </button>
         </div>
       </div>

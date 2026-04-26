@@ -2,13 +2,15 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 
-// Destructure ALL controllers cleanly
 const { 
     getAllMovies, 
     searchMovies, 
     saveMovie, 
     getSavedMovies, 
     removeSavedMovie,
+    favoriteMovie,           // <-- NEW
+    getFavoriteMovies,       // <-- NEW
+    removeFavoriteMovie,     // <-- NEW
     getTrendingTMDB, 
     getMoviesByGenreTMDB, 
     getMovieTrailerTMDB,
@@ -34,8 +36,14 @@ router.get('/all', getAllMovies);
 router.get('/search', searchMovies);
 
 // Protected Routes (Require User Token)
+// Watchlist
 router.post('/save', authMiddleware, saveMovie);
 router.get('/collection', authMiddleware, getSavedMovies);
 router.delete('/save/:movieId', authMiddleware, removeSavedMovie);
+
+// Favorites
+router.post('/favorite', authMiddleware, favoriteMovie);
+router.get('/favorites', authMiddleware, getFavoriteMovies);
+router.delete('/favorite/:movieId', authMiddleware, removeFavoriteMovie);
 
 module.exports = router;
