@@ -1,6 +1,6 @@
 import { VideoCard } from './VideoCard';
 
-export function VideoRow({ title, videos, viewMode = 'grid', onWatch }) {
+export function VideoRow({ title, videos, viewMode = 'grid', onWatch, savedIds = new Set(), favoriteIds = new Set() }) {
   if (!videos || videos.length === 0) return null;
 
   return (
@@ -21,6 +21,8 @@ export function VideoRow({ title, videos, viewMode = 'grid', onWatch }) {
             {...video} 
             viewMode={viewMode} 
             onWatch={onWatch} 
+            isSavedInitial={savedIds.has(String(video.id))}
+            isFavoritedInitial={favoriteIds.has(String(video.id))}
           />
         ))}
       </div>

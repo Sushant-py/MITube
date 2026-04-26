@@ -228,7 +228,7 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
 
         {/* ── RIGHT — streaming pane ─────────────────────────────────────────── */}
         <div
-          className={`h-full bg-zinc-950/95 border-emerald-500/30 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col overflow-hidden flex-shrink-0 ${
+          className={`h-full bg-zinc-950/95 border-emerald-500/30 transition-all duration-500 ease-out flex flex-col overflow-hidden flex-shrink-0 ${
             isPaneOpen ? 'w-[350px] lg:w-96 border-l opacity-100' : 'w-0 border-l-0 opacity-0'
           }`}
         >
