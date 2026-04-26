@@ -15,3 +15,19 @@ const movieSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Movie', movieSchema);
+
+const savedMovieSchema = new mongoose.Schema({
+    userId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true 
+    },
+    movieId: { type: String, required: true }, // TMDB ID
+    title: { type: String, required: true },
+    poster: { type: String },
+    rating: { type: String },
+    year: { type: String },
+    type: { type: String, enum: ['favorite', 'watchlist'], default: 'watchlist' }
+}, { timestamps: true });
+
+module.exports = mongoose.model('SavedMovie', savedMovieSchema);

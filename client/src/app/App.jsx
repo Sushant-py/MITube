@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Grid, List, Film, User, Menu, X, PlayCircle, History } from 'lucide-react';
+import { Search, Grid, List, Film, User, Menu, X, PlayCircle, History, LogOut } from 'lucide-react';
 import { FeaturedHero } from './components/FeaturedHero';
 import { VideoRow }     from './components/VideoRow';
 import { VideoModal }   from './components/VideoModal';
 import { fetchMovies, getImageUrl } from '../utils/tmdb';
+import { useAuth } from '../context/AuthContext';
+import { AuthModal }    from './components/AuthModal';
 
 // ─── Reusable IntersectionObserver hook ───────────────────────────────────────
-// `callback` fires once when the sentinel element scrolls into view.
-// We disconnect immediately after so it only fires once per observation cycle —
-// the caller is responsible for re-observing after new content is appended.
 function useSentinel(callback) {
   const ref = useRef(null);
   useEffect(() => {
@@ -20,8 +19,7 @@ function useSentinel(callback) {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  });          // no dependency array — re-runs after every render so the
-               // observer always wraps the *current* callback closure
+  });          
   return ref;
 }
 
@@ -46,6 +44,10 @@ export default function App() {
   const [actionVideos, setActionVideos] = useState([]);
   const [sciFiVideos,  setSciFiVideos]  = useState([]);
   const [topRated,     setTopRated]     = useState([]);
+  
+  // Auth State
+  const { user, logout } = useAuth(); 
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Per-category page cursors
   const pages = useRef({ trending: 1, action: 1, scifi: 1, top: 1, discover: 1 });
@@ -53,13 +55,13 @@ export default function App() {
   // Which categories still have pages left on the server
   const hasMore = useRef({ trending: true, action: true, scifi: true, top: true, discover: true });
 
-  const [isLoading,      setIsLoading]      = useState(true);
+  const [isLoading,       setIsLoading]       = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [viewMode,       setViewMode]       = useState('grid');
-  const [activeNav,      setActiveNav]      = useState('Library');
+  const [viewMode,        setViewMode]        = useState('grid');
+  const [activeNav,       setActiveNav]       = useState('Library');
 
   // ── Search state ──────────────────────────────────────────────────────────
-  const [searchOpen,    setSearchOpen]    = useState(false);
+  const [searchOpen,     setSearchOpen]    = useState(false);
   const [searchQuery,   setSearchQuery]   = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching,   setIsSearching]   = useState(false);
@@ -100,10 +102,8 @@ export default function App() {
     })();
   }, []);
 
-  // ─── Infinite scroll — Library tab ────────────────────────────────────────
-  // Fires when the sentinel at the bottom of the Library feed comes into view.
+  // ─── Infinite — Library tab ────────────────────────────────────────
   const loadMoreLibrary = useCallback(async () => {
-    // Guard: already fetching, or all three main categories are exhausted
     if (isFetchingMore) return;
     const anyLeft =
       hasMore.current.trending ||
@@ -160,14 +160,9 @@ export default function App() {
     }
   }, [isFetchingMore]);
 
-  // Sentinel ref for Library — placed just before the footer inside renderContent
   const librarySentinelRef = useSentinel(loadMoreLibrary);
 
   // ─── Infinite scroll — Discover tab ───────────────────────────────────────
-  // Discover has a flat list filtered by genre. When the genre changes we reset,
-  // when the user scrolls to the bottom we load the next page of that genre.
-
-  // Reset discover list whenever genre changes
   useEffect(() => {
     pages.current.discover = 1;
     hasMore.current.discover = true;
@@ -242,14 +237,12 @@ export default function App() {
   const navLinks      = ['Library', 'Collections', 'Discover', 'Archive'];
   const discoverGenres = ['All', 'Action', 'Sci-Fi', 'Classics'];
 
-  // Shared loading spinner shown at the bottom while fetching more pages
   const FetchingMore = () => isFetchingMore ? (
     <div className="flex justify-center py-10">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
     </div>
   ) : null;
 
-  // End-of-feed message once all pages exhausted
   const EndOfFeed = ({ show }) => show ? (
     <p className="text-center text-zinc-700 text-xs uppercase tracking-widest py-10">
       You have reached the end
@@ -287,9 +280,7 @@ export default function App() {
             <VideoRow title="Now playing: Sci-Fi"  videos={sciFiVideos}             viewMode={viewMode} onWatch={handleWatchTrailer} />
             <VideoRow title="Action collection"    videos={actionVideos}            viewMode={viewMode} onWatch={handleWatchTrailer} />
 
-            {/* Sentinel: sits just below the last row — triggers loadMoreLibrary */}
             <div ref={librarySentinelRef} className="h-1" aria-hidden="true" />
-
             <FetchingMore />
             <EndOfFeed show={allExhausted} />
           </>
@@ -300,7 +291,6 @@ export default function App() {
         const discoverExhausted = !hasMore.current.discover;
         return (
           <div className="pt-8 px-8">
-            {/* Genre filter pills */}
             <div className="flex gap-4 mb-10 overflow-x-auto pb-2 scrollbar-hide">
               {discoverGenres.map(genre => (
                 <button
@@ -324,9 +314,7 @@ export default function App() {
               onWatch={handleWatchTrailer}
             />
 
-            {/* Sentinel for Discover */}
             <div ref={discoverSentinelRef} className="h-1" aria-hidden="true" />
-
             <FetchingMore />
             <EndOfFeed show={discoverExhausted} />
           </div>
@@ -344,9 +332,20 @@ export default function App() {
               <p className="text-zinc-400 max-w-md mx-auto mb-8 text-lg">
                 Create custom playlists, save favourites, and track what you want to watch next. Sign in to sync your collection.
               </p>
-              <button className="bg-emerald-500 text-black px-10 py-4 rounded-lg font-bold uppercase tracking-widest hover:bg-emerald-400 transition-all">
-                Sign in to save
-              </button>
+              
+              {/* WIRED UP THE CONDITIONAL BUTTON HERE */}
+              {!user ? (
+                <button 
+                  onClick={() => setAuthModalOpen(true)}
+                  className="bg-emerald-500 text-black px-10 py-4 rounded-lg font-bold uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                >
+                  Sign in to save
+                </button>
+              ) : (
+                <p className="text-emerald-500 font-bold tracking-widest uppercase">
+                  Fetching your saved movies...
+                </p>
+              )}
             </div>
           </div>
         );
@@ -494,25 +493,35 @@ export default function App() {
             )}
 
             <div className="relative">
-              <button
-                onClick={e => { e.stopPropagation(); setUserMenuOpen(o => !o); }}
-                className="h-10 w-10 border-2 border-emerald-500/50 bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-500 hover:text-black transition-all rounded-full group"
-              >
-                <User className="h-5 w-5 text-emerald-400 group-hover:text-black" />
-              </button>
-              {userMenuOpen && (
-                <div
-                  className="absolute right-0 top-14 w-56 bg-zinc-950 border border-emerald-500/30 rounded-xl overflow-hidden shadow-2xl z-50"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <div className="p-4 border-b border-zinc-800">
-                    <p className="text-white font-bold">Guest User</p>
-                    <p className="text-xs text-zinc-500">Not signed in</p>
-                  </div>
-                  <button className="w-full flex items-center gap-3 px-4 py-3 text-sm text-emerald-400 font-bold hover:bg-emerald-500/10 transition-colors">
-                    Sign in / Register
+              {user ? (
+                // IF LOGGED IN: Show their Avatar or Initial
+                <>
+                  <button onClick={e => { e.stopPropagation(); setUserMenuOpen(o => !o); }}
+                    className="h-10 w-10 border-2 border-emerald-500 bg-zinc-900 flex items-center justify-center hover:scale-105 transition-all rounded-full overflow-hidden">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-emerald-400 font-bold uppercase">{user.username.charAt(0)}</span>
+                    )}
                   </button>
-                </div>
+                  {userMenuOpen && (
+                    <div className="absolute right-0 top-14 w-56 bg-zinc-950 border border-emerald-500/30 rounded-xl overflow-hidden shadow-2xl z-50">
+                      <div className="p-4 border-b border-zinc-800">
+                        <p className="text-white font-bold truncate">@{user.username}</p>
+                        <p className="text-xs text-zinc-500 truncate">{user.email}</p>
+                      </div>
+                      <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+                        <LogOut className="h-4 w-4" /> Sign Out
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // IF NOT LOGGED IN: Clicking opens the Auth Modal
+                <button onClick={() => setAuthModalOpen(true)}
+                  className="px-6 py-2 border-2 border-emerald-500/50 bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-500 hover:text-black text-emerald-400 font-bold tracking-widest uppercase transition-all rounded-full">
+                  Sign In
+                </button>
               )}
             </div>
 
@@ -539,6 +548,14 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      {/* ── Auth Modal ───────────────────────────────────────────────────── */}
+      <div className="relative z-[120]">
+        <AuthModal 
+          isOpen={authModalOpen} 
+          onClose={() => setAuthModalOpen(false)} 
+        />
+      </div>
 
       {/* ── Trailer modal — highest z-index so it clears everything ─────── */}
       <div className="relative z-[110]">
