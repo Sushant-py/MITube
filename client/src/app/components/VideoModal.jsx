@@ -112,7 +112,7 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
   const [trailerKey,   setTrailerKey]   = useState(null);
   const [providers,    setProviders]    = useState(null);
   const [loading,      setLoading]      = useState(true);
-  const [trailerError, setTrailerError] = useState(false);
+ 
 
   // Open by default on desktop, collapsed on mobile
   const [isPaneOpen, setIsPaneOpen] = useState(() => window.innerWidth >= 1024);
@@ -139,7 +139,6 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
     setLoading(true);
     setTrailerKey(null);
     setProviders(null);
-    setTrailerError(false);
     setIsPaneOpen(window.innerWidth >= 1024);
 
     Promise.all([
@@ -147,7 +146,7 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
       fetchMovies.getProviders(movieId).catch(() => null),
     ]).then(([trailer, provs]) => {
       setTrailerKey(trailer);
-      setTrailerError(!trailer);
+     
 
       const hasData =
         provs && (provs.flatrate?.length || provs.rent?.length || provs.buy?.length);
