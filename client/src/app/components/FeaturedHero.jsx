@@ -4,6 +4,9 @@ import { Play, Bookmark, Star } from 'lucide-react';
 export function FeaturedHero({ movie, onWatch, isSavedInitial = false, isFavoritedInitial = false, onSyncList }) {
   const [isSaved, setIsSaved] = useState(isSavedInitial);
   const [isFavorited, setIsFavorited] = useState(isFavoritedInitial);
+  
+  // 1. ADDED API_BASE HERE
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   useEffect(() => { setIsSaved(isSavedInitial); }, [isSavedInitial]);
   useEffect(() => { setIsFavorited(isFavoritedInitial); }, [isFavoritedInitial]);
@@ -17,10 +20,12 @@ export function FeaturedHero({ movie, onWatch, isSavedInitial = false, isFavorit
       if (!token) return alert("Please log in to save movies.");
 
       if (isSaved) {
-        const res = await fetch(`/api/movies/save/${movie.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        // 2. ADDED API_BASE TO FETCH
+        const res = await fetch(`${API_BASE}/api/movies/save/${movie.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) { setIsSaved(false); if (onSyncList) onSyncList('save', 'remove', movie.id); }
       } else {
-        const res = await fetch('/api/movies/save', {
+        // 3. ADDED API_BASE TO FETCH
+        const res = await fetch(`${API_BASE}/api/movies/save`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ movieId: movie.id, title: movie.title, thumbnail: movie.thumbnail, genre: movie.genre, year: movie.year, rating: movie.rating })
         });
@@ -36,10 +41,12 @@ export function FeaturedHero({ movie, onWatch, isSavedInitial = false, isFavorit
       if (!token) return alert("Please log in to favorite movies.");
 
       if (isFavorited) {
-        const res = await fetch(`/api/movies/favorite/${movie.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        // 4. ADDED API_BASE TO FETCH
+        const res = await fetch(`${API_BASE}/api/movies/favorite/${movie.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) { setIsFavorited(false); if (onSyncList) onSyncList('favorite', 'remove', movie.id); }
       } else {
-        const res = await fetch('/api/movies/favorite', {
+        // 5. ADDED API_BASE TO FETCH
+        const res = await fetch(`${API_BASE}/api/movies/favorite`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ movieId: movie.id, title: movie.title, thumbnail: movie.thumbnail, genre: movie.genre, year: movie.year, rating: movie.rating })
         });
