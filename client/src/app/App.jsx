@@ -93,9 +93,12 @@ export default function App() {
       try {
         const token = localStorage.getItem('token');
         if(!token) return;
+        
+        const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000'; // Add this
+        
         const [watchRes, favRes] = await Promise.all([
-          fetch('/api/movies/collection', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/movies/favorites', { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_BASE}/api/movies/collection`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE}/api/movies/favorites`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
         
         if (watchRes.ok) { 

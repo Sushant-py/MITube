@@ -133,6 +133,7 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
   }, [isOpen, handleKey]);
 
   // ── Fetch trailer + providers in parallel ──────────────────────────────────
+ 
   useEffect(() => {
     if (!isOpen || !movieId) return;
 
@@ -141,13 +142,15 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
     setProviders(null);
     setIsPaneOpen(window.innerWidth >= 1024);
 
+    // Use the environment variable for your live backend
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
     Promise.all([
-      fetchMovies.getTrailer(movieId).catch(() => null),
-      fetchMovies.getProviders(movieId).catch(() => null),
+      fetch(`${API_BASE}/api/movies/tmdb/trailer/${movieId}`).then(res => res.json()).then(data => data.trailerKey).catch(() => null),
+      fetch(`${API_BASE}/api/movies/tmdb/providers/${movieId}`).then(res => res.json()).catch(() => null),
     ]).then(([trailer, provs]) => {
       setTrailerKey(trailer);
-     
-
+      
       const hasData =
         provs && (provs.flatrate?.length || provs.rent?.length || provs.buy?.length);
       setProviders(hasData ? provs : FALLBACK_PROVIDERS);

@@ -7,6 +7,7 @@ export function Archive({ onWatch, onLoginClick, savedIds, favoriteIds, onSyncLi
     const { user } = useAuth();
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(true);
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
     useEffect(() => {
         const fetchFavorites = async () => {
@@ -14,19 +15,19 @@ export function Archive({ onWatch, onLoginClick, savedIds, favoriteIds, onSyncLi
             try {
                 const token = localStorage.getItem('token');
                 if (!token || !user) return;
-                const response = await fetch(`/api/movies/favorites`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetch(`${API_BASE}/api/movies/favorites`, { headers: { 'Authorization': `Bearer ${token}` } });
                 const data = await response.json();
                 if (response.ok) setMovies(data);
             } catch (error) { console.error(error); } finally { setLoading(false); }
         };
         fetchFavorites();
-    }, [user]);
+    }, [user, API_BASE]);
 
     const handleRemove = async (movieId, e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/movies/favorite/${movieId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetch(`${API_BASE}/api/movies/favorite/${movieId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             if (response.ok) {
                 setMovies(prev => prev.filter(m => String(m.tmdbId) !== String(movieId) && String(m._id) !== String(movieId)));
                 if (onSyncList) onSyncList('favorite', 'remove', movieId);

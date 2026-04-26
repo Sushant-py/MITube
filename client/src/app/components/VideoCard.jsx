@@ -2,6 +2,9 @@ import { Play, Bookmark, Star, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function VideoCard({ id, title, thumbnail, duration, year, rating, genre, videoUrl, viewMode = 'grid', onWatch, isSavedInitial = false, isFavoritedInitial = false, showRemove = false, onRemoveClick, onSyncList }) {
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const trailerRes = await fetch(`${API_BASE}/api/movies/tmdb/trailer/${movieId}`);
+  const providersRes = await fetch(`${API_BASE}/api/movies/tmdb/providers/${movieId}`);
   const [isHovered, setIsHovered] = useState(false);
   const [isSaved, setIsSaved] = useState(isSavedInitial);
   const [isFavorited, setIsFavorited] = useState(isFavoritedInitial);
@@ -21,10 +24,10 @@ export function VideoCard({ id, title, thumbnail, duration, year, rating, genre,
       if (!token) return alert("Please log in to save movies.");
 
       if (isSaved) { 
-        const response = await fetch(`/api/movies/save/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(`${API_BASE}/api/movies/save/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) { setIsSaved(false); if (onSyncList) onSyncList('save', 'remove', id); }
       } else { 
-        const response = await fetch('/api/movies/save', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ movieId: id, title, thumbnail, genre, year, rating }) });
+        const response = await fetch(`${API_BASE}/api/movies/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ movieId: id, title, thumbnail, genre, year, rating }) });
         if (response.ok) { setIsSaved(true); if (onSyncList) onSyncList('save', 'add', id); }
       }
     } catch (error) { console.error(error); }
@@ -37,10 +40,10 @@ export function VideoCard({ id, title, thumbnail, duration, year, rating, genre,
       if (!token) return alert("Please log in to favorite movies.");
 
       if (isFavorited) { 
-        const response = await fetch(`/api/movies/favorite/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(`${API_BASE}/api/movies/favorite/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         if (response.ok) { setIsFavorited(false); if (onSyncList) onSyncList('favorite', 'remove', id); }
       } else { 
-        const response = await fetch('/api/movies/favorite', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ movieId: id, title, thumbnail, genre, year, rating }) });
+        const response = await fetch(`${API_BASE}/api/movies/favorite`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ movieId: id, title, thumbnail, genre, year, rating }) });
         if (response.ok) { setIsFavorited(true); if (onSyncList) onSyncList('favorite', 'add', id); }
       }
     } catch (error) { console.error(error); }
