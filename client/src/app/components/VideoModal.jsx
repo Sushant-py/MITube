@@ -2,13 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   X, Tv, MonitorPlay,
   ChevronRight, ChevronLeft, ExternalLink,
-  ShoppingCart, Search
+  ShoppingCart, Search, Bookmark, Star
 } from 'lucide-react';
-import { fetchMovies, getImageUrl } from '../../utils/tmdb';
+import { getImageUrl } from '../../utils/tmdb'; // Ensure you're importing correctly
 
 // ─── Direct platform search URLs ──────────────────────────────────────────────
-// Each entry maps the exact provider_name string TMDB returns to a search URL.
-// Any platform not listed falls through to a Google search.
 function getPlatformUrl(platformName, movieTitle) {
   const q = encodeURIComponent(movieTitle);
   const map = {
@@ -35,18 +33,9 @@ function getPlatformUrl(platformName, movieTitle) {
 // ─── Fallback shown when TMDB returns no providers for the user's region ───────
 const FALLBACK_PROVIDERS = {
   flatrate: [
-    {
-      provider_name: 'Netflix',
-      fallback_logo: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg',
-    },
-    {
-      provider_name: 'Prime Video',
-      fallback_logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Prime_Video.png',
-    },
-    {
-      provider_name: 'Disney+ Hotstar',
-      fallback_logo: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Disney%2B_Hotstar_logo.svg',
-    },
+    { provider_name: 'Netflix', fallback_logo: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg' },
+    { provider_name: 'Prime Video', fallback_logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Prime_Video.png' },
+    { provider_name: 'Disney+ Hotstar', fallback_logo: 'https://upload.wikimedia.org/wikipedia/commons/1/1e/Disney%2B_Hotstar_logo.svg' },
   ],
   rent: [],
   buy:  [],
@@ -55,10 +44,7 @@ const FALLBACK_PROVIDERS = {
 // ─── Provider link card ────────────────────────────────────────────────────────
 function ProviderCard({ platform, movieTitle, variant = 'stream' }) {
   const href = getPlatformUrl(platform.provider_name, movieTitle);
-  const logo = platform.logo_path
-    ? getImageUrl(platform.logo_path, 'w92')
-    : platform.fallback_logo;
-
+  const logo = platform.logo_path ? getImageUrl(platform.logo_path, 'w92') : platform.fallback_logo;
   const isStream = variant === 'stream';
 
   return (
@@ -83,9 +69,7 @@ function ProviderCard({ platform, movieTitle, variant = 'stream' }) {
           )}
         </div>
         <span className={`text-sm font-medium transition-colors ${
-          isStream
-            ? 'text-white group-hover:text-emerald-400'
-            : 'text-zinc-300 group-hover:text-white'
+          isStream ? 'text-white group-hover:text-emerald-400' : 'text-zinc-300 group-hover:text-white'
         }`}>
           {platform.provider_name}
         </span>
@@ -97,9 +81,7 @@ function ProviderCard({ platform, movieTitle, variant = 'stream' }) {
         </span>
       ) : (
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-[10px] text-zinc-500 bg-zinc-800 px-2 py-1.5 rounded font-bold uppercase tracking-wider">
-            Store
-          </span>
+          <span className="text-[10px] text-zinc-500 bg-zinc-800 px-2 py-1.5 rounded font-bold uppercase tracking-wider">Store</span>
           <ExternalLink className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-400" />
         </div>
       )}
@@ -108,16 +90,39 @@ function ProviderCard({ platform, movieTitle, variant = 'stream' }) {
 }
 
 // ─── Main modal ────────────────────────────────────────────────────────────────
-export function VideoModal({ isOpen, onClose, movieId, title }) {
-  const [trailerKey,   setTrailerKey]   = useState(null);
-  const [providers,    setProviders]    = useState(null);
-  const [loading,      setLoading]      = useState(true);
- 
+export function VideoModal({ 
+  isOpen, 
+  onClose, 
+  movieId, 
+  title,
+  // Added these props so the modal can save all the data to MongoDB
+  thumbnail,
+  genre,
+  year,
+  rating,
+  isSavedInitial = false,
+  isFavoritedInitial = false,
+  onSyncList
+}) {
+  const [trailerKey, setTrailerKey] = useState(null);
+  const [providers, setProviders] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Database States
+  const [isSaved, setIsSaved] = useState(isSavedInitial);
+  const [isFavorited, setIsFavorited] = useState(isFavoritedInitial);
 
-  // Open by default on desktop, collapsed on mobile
   const [isPaneOpen, setIsPaneOpen] = useState(() => window.innerWidth >= 1024);
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  // ── Escape key + body scroll lock ─────────────────────────────────────────
+  // Keep DB state synced if props change
+  useEffect(() => {
+    if (isOpen) {
+      setIsSaved(isSavedInitial);
+      setIsFavorited(isFavoritedInitial);
+    }
+  }, [isOpen, isSavedInitial, isFavoritedInitial]);
+
   const handleKey = useCallback(e => {
     if (e.key === 'Escape') onClose();
   }, [onClose]);
@@ -132,8 +137,7 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
     };
   }, [isOpen, handleKey]);
 
-  // ── Fetch trailer + providers in parallel ──────────────────────────────────
- 
+  // Fetch trailer + providers
   useEffect(() => {
     if (!isOpen || !movieId) return;
 
@@ -142,68 +146,73 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
     setProviders(null);
     setIsPaneOpen(window.innerWidth >= 1024);
 
-    // Use the environment variable for your live backend
-    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
     Promise.all([
       fetch(`${API_BASE}/api/movies/tmdb/trailer/${movieId}`).then(res => res.json()).then(data => data.trailerKey).catch(() => null),
       fetch(`${API_BASE}/api/movies/tmdb/providers/${movieId}`).then(res => res.json()).catch(() => null),
     ]).then(([trailer, provs]) => {
       setTrailerKey(trailer);
-      
-      const hasData =
-        provs && (provs.flatrate?.length || provs.rent?.length || provs.buy?.length);
+      const hasData = provs && (provs.flatrate?.length || provs.rent?.length || provs.buy?.length);
       setProviders(hasData ? provs : FALLBACK_PROVIDERS);
     }).finally(() => setLoading(false));
-  }, [isOpen, movieId]);
+  }, [isOpen, movieId, API_BASE]);
+
+  // ── Database Action Handlers ──────────────────────────────────────────
+  const handleSave = async (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    try {
+      const token = localStorage.getItem('token'); 
+      if (!token) return alert("Please log in to save movies.");
+
+      if (isSaved) { 
+        const response = await fetch(`${API_BASE}/api/movies/save/${movieId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) { setIsSaved(false); if (onSyncList) onSyncList('save', 'remove', movieId); }
+      } else { 
+        const response = await fetch(`${API_BASE}/api/movies/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ movieId, title, thumbnail, genre, year, rating }) });
+        if (response.ok) { setIsSaved(true); if (onSyncList) onSyncList('save', 'add', movieId); }
+      }
+    } catch (error) { console.error(error); }
+  };
+
+  const handleFavorite = async (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    try {
+      const token = localStorage.getItem('token'); 
+      if (!token) return alert("Please log in to favorite movies.");
+
+      if (isFavorited) { 
+        const response = await fetch(`${API_BASE}/api/movies/favorite/${movieId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        if (response.ok) { setIsFavorited(false); if (onSyncList) onSyncList('favorite', 'remove', movieId); }
+      } else { 
+        const response = await fetch(`${API_BASE}/api/movies/favorite`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ movieId, title, thumbnail, genre, year, rating }) });
+        if (response.ok) { setIsFavorited(true); if (onSyncList) onSyncList('favorite', 'add', movieId); }
+      }
+    } catch (error) { console.error(error); }
+  };
 
   if (!isOpen) return null;
 
-  // Deduplicate rent + buy by provider_name
   const rentBuy = Array.from(
-    new Map(
-      [...(providers?.rent ?? []), ...(providers?.buy ?? [])].map(p => [p.provider_name, p])
-    ).values()
+    new Map([...(providers?.rent ?? []), ...(providers?.buy ?? [])].map(p => [p.provider_name, p])).values()
   );
 
   return (
-    // Backdrop — click outside to close
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 lg:p-8"
-      onClick={onClose}
-    >
-      {/* Modal shell */}
-      <div
-        className="relative w-full max-w-[1400px] h-[80vh] min-h-[500px] bg-black rounded-2xl overflow-hidden border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] flex"
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 lg:p-8" onClick={onClose}>
+      <div className="relative w-full max-w-[1400px] h-[80vh] min-h-[500px] bg-black rounded-2xl overflow-hidden border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.15)] flex" onClick={e => e.stopPropagation()}>
 
-        {/* ── Close button ──────────────────────────────────────────────────── */}
-        <button
-          onClick={onClose}
-          className="absolute top-6 left-6 z-50 p-3 bg-black/60 hover:bg-emerald-500 text-white hover:text-black rounded-full backdrop-blur-md transition-all group border border-emerald-500/20"
-          aria-label="Close"
-        >
+        {/* Close button */}
+        <button onClick={onClose} className="absolute top-6 left-6 z-50 p-3 bg-black/60 hover:bg-emerald-500 text-white hover:text-black rounded-full backdrop-blur-md transition-all group border border-emerald-500/20">
           <X className="h-6 w-6 group-hover:rotate-90 transition-transform" />
         </button>
 
-        {/* ── LEFT — video player ────────────────────────────────────────────── */}
+        {/* LEFT — video player */}
         <div className="relative flex-1 bg-zinc-950 transition-all duration-500 ease-in-out h-full min-w-0">
-
           {loading ? (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-emerald-500">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500" />
               <span className="uppercase tracking-widest text-sm font-bold">Loading Trailer...</span>
             </div>
           ) : trailerKey ? (
-            <iframe
-              className="w-full h-full"
-              src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0&controls=1&modestbranding=1`}
-              title={`${title} Trailer`}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+            <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0&controls=1&modestbranding=1`} title={`${title} Trailer`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
               <MonitorPlay className="h-16 w-16 mb-4 opacity-50" />
@@ -212,47 +221,37 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
             </div>
           )}
 
-          {/* Nudge tab — visible only when pane is closed */}
-          <button
-            onClick={() => setIsPaneOpen(true)}
-            className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 transition-all duration-300 flex flex-col items-center justify-center px-2 py-6 bg-emerald-500/10 hover:bg-emerald-500 backdrop-blur-md border border-emerald-500/50 border-r-0 rounded-l-xl text-emerald-400 hover:text-black shadow-[-5px_0_20px_rgba(16,185,129,0.1)] group ${
-              isPaneOpen
-                ? 'translate-x-full opacity-0 pointer-events-none'
-                : 'translate-x-0 opacity-100'
-            }`}
-            aria-label="Open streaming links"
-          >
+          <button onClick={() => setIsPaneOpen(true)} className={`absolute right-0 top-1/2 -translate-y-1/2 z-20 transition-all duration-300 flex flex-col items-center justify-center px-2 py-6 bg-emerald-500/10 hover:bg-emerald-500 backdrop-blur-md border border-emerald-500/50 border-r-0 rounded-l-xl text-emerald-400 hover:text-black shadow-[-5px_0_20px_rgba(16,185,129,0.1)] group ${isPaneOpen ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
             <ChevronLeft className="h-5 w-5 mb-2 group-hover:-translate-x-1 transition-transform" />
-            <span className="[writing-mode:vertical-lr] rotate-180 uppercase tracking-widest font-bold text-xs">
-              Where to Watch
-            </span>
+            <span className="[writing-mode:vertical-lr] rotate-180 uppercase tracking-widest font-bold text-xs">Where to Watch</span>
           </button>
         </div>
 
-        {/* ── RIGHT — streaming pane ─────────────────────────────────────────── */}
-        <div
-          className={`h-full bg-zinc-950/95 border-emerald-500/30 transition-all duration-500 ease-out flex flex-col overflow-hidden flex-shrink-0 ${
-            isPaneOpen ? 'w-[350px] lg:w-96 border-l opacity-100' : 'w-0 border-l-0 opacity-0'
-          }`}
-        >
-          {/* Pane header */}
+        {/* RIGHT — streaming pane */}
+        <div className={`h-full bg-zinc-950/95 border-emerald-500/30 transition-all duration-500 ease-out flex flex-col overflow-hidden flex-shrink-0 ${isPaneOpen ? 'w-[350px] lg:w-96 border-l opacity-100' : 'w-0 border-l-0 opacity-0'}`}>
           <div className="flex items-center justify-between p-6 border-b border-zinc-800 bg-black/40 flex-shrink-0">
             <h3 className="text-emerald-500 font-bold uppercase tracking-widest flex items-center gap-2 text-sm whitespace-nowrap">
               <Tv className="h-5 w-5" /> Stream Links
             </h3>
-            <button
-              onClick={() => setIsPaneOpen(false)}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
-              aria-label="Collapse pane"
-            >
+            <button onClick={() => setIsPaneOpen(false)} className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors">
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Pane body — scrollable */}
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <h2 className="text-white text-xl font-bold mb-4 line-clamp-2">{title}</h2>
 
-            <h2 className="text-white text-xl font-bold mb-6 line-clamp-2">{title}</h2>
+            {/* ── Database Action Buttons (Save / Favorite) ── */}
+            <div className="flex gap-3 mb-6 border-b border-zinc-800/60 pb-6">
+              <button onClick={handleSave} className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest transition-all border ${isSaved ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-black/40 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-black'}`}>
+                <Bookmark className="h-4 w-4" fill={isSaved ? "currentColor" : "none"} />
+                {isSaved ? 'Saved' : 'Watchlist'}
+              </button>
+              <button onClick={handleFavorite} className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest transition-all border ${isFavorited ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-black/40 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500 hover:text-black'}`}>
+                <Star className="h-4 w-4" fill={isFavorited ? "currentColor" : "none"} />
+                {isFavorited ? 'Favorited' : 'Favorite'}
+              </button>
+            </div>
 
             {loading ? (
               <div className="flex items-center gap-3 text-zinc-600 text-sm">
@@ -260,60 +259,39 @@ export function VideoModal({ isOpen, onClose, movieId, title }) {
                 Fetching links...
               </div>
             ) : (
-              <div className="flex flex-col gap-8">
-
-                {/* ── Subscription / streaming ── */}
+              <div className="flex flex-col gap-6">
+                {/* Subscription */}
                 {providers?.flatrate?.length > 0 && (
                   <div className="space-y-3">
-                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
-                      Included with subscription
-                    </span>
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Included with subscription</span>
                     {providers.flatrate.map((p, i) => (
-                      <ProviderCard
-                        key={p.provider_name + i}
-                        platform={p}
-                        movieTitle={title}
-                        variant="stream"
-                      />
+                      <ProviderCard key={p.provider_name + i} platform={p} movieTitle={title} variant="stream" />
                     ))}
                   </div>
                 )}
 
-                {/* ── Rent / Buy ── */}
+                {/* Rent / Buy */}
                 {rentBuy.length > 0 && (
                   <div className="space-y-3 pt-4 border-t border-zinc-800/60">
                     <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold flex items-center gap-1">
                       <ShoppingCart className="h-3 w-3" /> Rent or Buy
                     </span>
                     {rentBuy.map((p, i) => (
-                      <ProviderCard
-                        key={p.provider_name + i}
-                        platform={p}
-                        movieTitle={title}
-                        variant="store"
-                      />
+                      <ProviderCard key={p.provider_name + i} platform={p} movieTitle={title} variant="store" />
                     ))}
                   </div>
                 )}
 
-                {/* ── Always-available Google fallback ── */}
+                {/* Google fallback */}
                 <div className="pt-4 border-t border-zinc-800/60">
                   <span className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold flex items-center gap-1 mb-3">
                     <Search className="h-3 w-3" /> Can't find it?
                   </span>
-                  <a
-                    href={`https://www.google.com/search?q=watch+${encodeURIComponent(title)}+online`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between bg-black/30 border border-zinc-800 rounded-xl p-3 hover:bg-zinc-900 hover:border-zinc-600 transition-all group"
-                  >
-                    <span className="text-zinc-500 text-sm group-hover:text-white transition-colors">
-                      Search on Google
-                    </span>
+                  <a href={`https://www.google.com/search?q=watch+${encodeURIComponent(title)}+online`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between bg-black/30 border border-zinc-800 rounded-xl p-3 hover:bg-zinc-900 hover:border-zinc-600 transition-all group">
+                    <span className="text-zinc-500 text-sm group-hover:text-white transition-colors">Search on Google</span>
                     <ExternalLink className="h-4 w-4 text-zinc-700 group-hover:text-zinc-400" />
                   </a>
                 </div>
-
               </div>
             )}
           </div>
