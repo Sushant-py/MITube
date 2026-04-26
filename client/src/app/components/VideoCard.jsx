@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 
 export function VideoCard({ id, title, thumbnail, duration, year, rating, genre, videoUrl, viewMode = 'grid', onWatch, isSavedInitial = false, isFavoritedInitial = false, showRemove = false, onRemoveClick, onSyncList }) {
   const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  const trailerRes = await fetch(`${API_BASE}/api/movies/tmdb/trailer/${movieId}`);
-  const providersRes = await fetch(`${API_BASE}/api/movies/tmdb/providers/${movieId}`);
+  
   const [isHovered, setIsHovered] = useState(false);
   const [isSaved, setIsSaved] = useState(isSavedInitial);
   const [isFavorited, setIsFavorited] = useState(isFavoritedInitial);
